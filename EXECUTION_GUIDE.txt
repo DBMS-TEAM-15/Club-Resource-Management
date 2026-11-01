@@ -101,3 +101,4 @@ PART C: TERMINAL PROOFS FOR EVALUATOR / VIVA DEMONSTRATION
      { \$group: { _id: '\$issue_type', count: { \$sum: 1 }, total_cost: { \$sum: '\$cost_incurred' } } }
    ]).toArray());
    "
+
