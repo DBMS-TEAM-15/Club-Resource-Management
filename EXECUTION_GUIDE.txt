@@ -1,0 +1,103 @@
+================================================================================
+CAMPUS CLUB RESOURCE EXCHANGE & INTELLIGENT ALLOCATION SYSTEM
+EXECUTION & DEMO VERIFICATION GUIDE (MySQL + MongoDB + Next.js)
+================================================================================
+
+--------------------------------------------------------------------------------
+PART A: QUICK START (RUN THIS AFTER RESTARTING YOUR TERMINAL OR LAPTOP)
+--------------------------------------------------------------------------------
+
+1. Open terminal and go to the project folder:
+   cd ~/DBMS/Club-Resource-Management
+
+2. Make sure MySQL is running:
+   brew services start mysql
+
+3. Make sure MongoDB is running (if using local MongoDB):
+   brew services start mongodb-community || mongod --dbpath ~/data/db --fork --logpath ~/data/mongod.log
+
+4. Start the Next.js web application:
+   npm run dev
+
+5. Open the application in your browser:
+   - Resource Catalog (Search + Filters + MongoDB Specs): http://localhost:3000
+   - Requests, Conflict Detection & Alternatives:         http://localhost:3000/requests
+   - Coordinator Approval & Return Portal:                http://localhost:3000/coordinator
+   - Admin Utilization & Analytics Dashboard:             http://localhost:3000/admin
+
+
+--------------------------------------------------------------------------------
+PART B: FIRST-TIME SETUP (OR TO RESET DATABASES TO CLEAN SEED DATA)
+--------------------------------------------------------------------------------
+
+1. Pull the latest code from GitHub:
+   cd ~/DBMS/Club-Resource-Management
+   git checkout main
+   git pull origin main
+
+2. Create your local environment file (.env.local):
+   cp -n .env.example .env.local
+   (Edit .env.local and set MYSQL_PASSWORD="" if your local MySQL root user has
+    no password, or set your actual MySQL root password.)
+
+3. Install Node.js dependencies:
+   npm install
+
+4. Load the MySQL Schema, Seed Data, Triggers, Views, and Stored Procedures:
+   (Add -p after -u root if your MySQL root user requires a password)
+   mysql -u root < database/mysql_schema.sql
+   mysql -u root < database/mysql_seed.sql
+   mysql -u root < database/triggers.sql
+   mysql -u root < database/views_and_fts.sql
+   mysql -u root < database/procedures_and_conflict.sql
+
+5. Load the MongoDB Collections, JSON Schema Validators, Indexes, and Seed Data:
+   mongosh "mongodb://localhost:27017/campus_club_resource_exchange" database/mongodb_schema.js
+   mongosh "mongodb://localhost:27017/campus_club_resource_exchange" database/mongodb_seed.js
+
+6. Start the development server:
+   npm run dev
+
+
+--------------------------------------------------------------------------------
+PART C: TERMINAL PROOFS FOR EVALUATOR / VIVA DEMONSTRATION
+--------------------------------------------------------------------------------
+
+1. Show all MySQL Tables, Views, Triggers, and Stored Procedures:
+   mysql -u root -D campus_club_resource_exchange -e "
+   SHOW FULL TABLES;
+   SHOW TRIGGERS;
+   SHOW PROCEDURE STATUS WHERE Db = 'campus_club_resource_exchange';
+   "
+
+2. Show Analytical Views Output (Availability, Club Summary, Underutilized Assets):
+   mysql -u root -D campus_club_resource_exchange -e "
+   SELECT * FROM vw_resource_availability;
+   SELECT * FROM vw_club_utilization_summary;
+   SELECT * FROM vw_underutilized_assets;
+   "
+
+3. Demonstrate Stored Procedures (Conflict Detection & Alternative Suggestions):
+   mysql -u root -D campus_club_resource_exchange -e "
+   CALL sp_check_scheduling_conflict(1, 2, NOW(), NOW() + INTERVAL 2 DAY);
+   CALL sp_suggest_alternative_resources(1, 1, NOW(), NOW() + INTERVAL 2 DAY);
+   "
+
+4. Demonstrate Trigger Validation (Attempting to Over-Allocate Stock):
+   mysql -u root -D campus_club_resource_exchange -e "
+   INSERT INTO ALLOCATION (request_id, quantity_allocated, status, approved_by)
+   VALUES (1, 99, 'allocated', 4);
+   "
+   (Expected output: ERROR 1644 (45000): Insufficient resource quantity available for the requested time window)
+
+5. Show MongoDB Collections, Flexible Specifications, and Aggregation Pipeline:
+   mongosh "mongodb://localhost:27017/campus_club_resource_exchange" --eval "
+   print('--- COLLECTIONS ---');
+   printjson(db.getCollectionNames());
+   print('--- SAMPLE FLEXIBLE SPECS ---');
+   printjson(db.resource_specs.find().toArray());
+   print('--- MAINTENANCE AGGREGATION ---');
+   printjson(db.maintenance_logs.aggregate([
+     { \$group: { _id: '\$issue_type', count: { \$sum: 1 }, total_cost: { \$sum: '\$cost_incurred' } } }
+   ]).toArray());
+   "
