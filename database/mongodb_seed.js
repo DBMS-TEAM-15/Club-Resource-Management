@@ -11,7 +11,7 @@ const seedUsers = [
     name: "Aaryesh",
     email: "aaryesh@pes.edu",
     role: "student",
-    roll_no: "PES2UG24CS191",
+    roll_no: "PES2UG24CS215",
     password_hash: "scrypt:campus_club_salt_v1:a8f5f167f44f4964e6c998dee827110c",
     created_at: new Date()
   },
@@ -20,6 +20,7 @@ const seedUsers = [
     name: "Hemaksh",
     email: "hemaksh@pes.edu",
     role: "club_officer",
+    roll_no: "PES2UG24CS191",
     club_role: "President - Robotics Club",
     password_hash: "scrypt:campus_club_salt_v1:d41d8cd98f00b204e9800998ecf8427e",
     created_at: new Date()
