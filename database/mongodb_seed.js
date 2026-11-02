@@ -1,11 +1,11 @@
 // ============================================================
 // MongoDB Seed Data for resource_specs, maintenance_logs, and user_credentials
+// Uses non-destructive upserts so custom registered users & resources are preserved
 // ============================================================
 
 const database = db.getSiblingDB("campus_club_resource_exchange");
 
-database.user_credentials.drop();
-database.user_credentials.insertMany([
+const seedUsers = [
   {
     user_id: Int32(1),
     name: "Aaryesh",
@@ -33,9 +33,13 @@ database.user_credentials.insertMany([
     password_hash: "scrypt:campus_club_salt_v1:e99a18c428cb38d5f260853678922e03",
     created_at: new Date()
   }
-]);
+];
 
-database.resource_specs.insertMany([
+seedUsers.forEach((u) => {
+  database.user_credentials.replaceOne({ email: u.email }, u, { upsert: true });
+});
+
+const seedSpecs = [
   {
     resource_id: Int32(1),
     category_name: "Camera",
@@ -139,42 +143,36 @@ database.resource_specs.insertMany([
     accessories_included: ["2x Speaker Stands", "2x 6m Speaker Cables", "Power Cable"],
     usage_guidelines: "Turn master volume down to zero before powering on or off.",
     tags: ["speaker", "pa-system", "yamaha", "mixer"]
-  },
-  {
-    resource_id: Int32(9),
-    category_name: "Microphone",
-    specifications: {
-      type: "Wireless Microphone",
-      port: "USB Type-C",
-      connectivity: "2.4GHz Digital"
-    },
-    accessories_included: ["Receiver", "USB-C Charging Cable", "Wind Muff"],
-    usage_guidelines: "Return in original pouch after event.",
-    tags: ["rode", "wireless", "usb-c", "mic"]
   }
-]);
+];
 
-database.maintenance_logs.insertMany([
-  {
-    resource_id: Int32(1),
-    reported_by_user_id: Int32(2),
-    issue_type: "routine_check",
-    notes: "Cleaned CMOS sensor and verified autofocus calibration after Robotics showcase.",
-    condition_before: "good",
-    condition_after: "excellent",
-    checklist: { lens_clean: true, battery_health_ok: true, sd_slot_ok: true },
-    cost_incurred: 0,
-    created_at: new Date()
-  },
-  {
-    resource_id: Int32(3),
-    reported_by_user_id: Int32(5),
-    issue_type: "cleaning",
-    notes: "Replaced air filter mesh and cleaned projector optics.",
-    condition_before: "fair",
-    condition_after: "good",
-    checklist: { air_filter_clean: true, hdmi_port_tested: true },
-    cost_incurred: 250,
-    created_at: new Date()
-  }
-]);
+seedSpecs.forEach((s) => {
+  database.resource_specs.replaceOne({ resource_id: s.resource_id }, s, { upsert: true });
+});
+
+if (database.maintenance_logs.countDocuments() === 0) {
+  database.maintenance_logs.insertMany([
+    {
+      resource_id: Int32(1),
+      reported_by_user_id: Int32(2),
+      issue_type: "routine_check",
+      notes: "Cleaned CMOS sensor and verified autofocus calibration after Robotics showcase.",
+      condition_before: "good",
+      condition_after: "excellent",
+      checklist: { lens_clean: true, battery_health_ok: true, sd_slot_ok: true },
+      cost_incurred: 0,
+      created_at: new Date()
+    },
+    {
+      resource_id: Int32(3),
+      reported_by_user_id: Int32(5),
+      issue_type: "cleaning",
+      notes: "Replaced air filter mesh and cleaned projector optics.",
+      condition_before: "fair",
+      condition_after: "good",
+      checklist: { air_filter_clean: true, hdmi_port_tested: true },
+      cost_incurred: 250,
+      created_at: new Date()
+    }
+  ]);
+}
