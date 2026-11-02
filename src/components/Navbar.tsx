@@ -2,16 +2,34 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SessionUser } from "@/lib/useAuth";
 
-export default function Navbar() {
+interface NavbarProps {
+  user?: SessionUser | null;
+  onLogout?: () => void;
+}
+
+export default function Navbar({ user, onLogout }: NavbarProps) {
   const pathname = usePathname();
 
-  const links = [
-    { href: "/", label: "Resource Catalog" },
-    { href: "/requests", label: "Reserve & Check Conflicts" },
-    { href: "/coordinator", label: "Coordinator & Maintenance" },
-    { href: "/admin", label: "Admin Analytics" },
+  const allLinks = [
+    { href: "/", label: "Resource Catalog", roles: ["student", "club_officer", "admin"] },
+    { href: "/requests", label: "Reserve & Check Conflicts", roles: ["student", "club_officer", "admin"] },
+    { href: "/coordinator", label: "Coordinator & Maintenance", roles: ["club_officer", "admin"] },
+    { href: "/admin", label: "Admin Analytics", roles: ["admin"] },
   ];
+
+  const visibleLinks = user
+    ? allLinks.filter((l) => l.roles.includes(user.role))
+    : allLinks;
+
+  function roleLabel(role?: string) {
+    if (role === "admin") return { text: "ADMIN", bg: "#fef3c7", color: "#92400e" };
+    if (role === "club_officer") return { text: "CLUB MANAGER", bg: "#d1fae5", color: "#065f46" };
+    return { text: "STUDENT", bg: "#e0e7ff", color: "#3730a3" };
+  }
+
+  const badge = roleLabel(user?.role);
 
   return (
     <header
@@ -19,13 +37,15 @@ export default function Navbar() {
         position: "sticky",
         top: 0,
         zIndex: 50,
-        background: "rgba(15, 23, 42, 0.92)",
+        background: "rgba(15, 23, 42, 0.94)",
         backdropFilter: "blur(12px)",
         borderBottom: "1px solid rgba(255,255,255,0.08)",
         padding: "0.85rem 2rem",
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
+        flexWrap: "wrap",
+        gap: "1rem",
       }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
@@ -54,8 +74,8 @@ export default function Navbar() {
         </div>
       </div>
 
-      <nav style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
-        {links.map((l) => {
+      <nav style={{ display: "flex", gap: "0.5rem", alignItems: "center", flexWrap: "wrap" }}>
+        {visibleLinks.map((l) => {
           const active = pathname === l.href;
           return (
             <Link
@@ -78,6 +98,44 @@ export default function Navbar() {
           );
         })}
       </nav>
+
+      {user ? (
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ color: "#fff", fontSize: "0.86rem", fontWeight: 600 }}>{user.name}</div>
+            <span
+              style={{
+                display: "inline-block",
+                padding: "1px 8px",
+                borderRadius: 999,
+                fontSize: "0.68rem",
+                fontWeight: 700,
+                background: badge.bg,
+                color: badge.color,
+              }}
+            >
+              {badge.text}
+            </span>
+          </div>
+          <button
+            onClick={onLogout}
+            className="btn"
+            style={{
+              background: "rgba(255,255,255,0.1)",
+              color: "#f8fafc",
+              padding: "0.42rem 0.85rem",
+              fontSize: "0.8rem",
+              border: "1px solid rgba(255,255,255,0.15)",
+            }}
+          >
+            Switch Role / Logout
+          </button>
+        </div>
+      ) : (
+        <Link href="/login" className="btn btn-primary" style={{ textDecoration: "none", fontSize: "0.84rem" }}>
+          Sign In
+        </Link>
+      )}
     </header>
   );
 }

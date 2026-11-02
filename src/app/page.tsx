@@ -2,15 +2,16 @@
 
 import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
+import { useAuth } from "@/lib/useAuth";
 
 export default function CatalogPage() {
+  const { user, loading, logout } = useAuth();
   const [resources, setResources] = useState<any[]>([]);
   const [q, setQ] = useState("");
   const [condition, setCondition] = useState("");
   const [availableOnly, setAvailableOnly] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
 
-  // New resource form state
   const [clubId, setClubId] = useState("1");
   const [categoryId, setCategoryId] = useState("1");
   const [name, setName] = useState("");
@@ -21,6 +22,8 @@ export default function CatalogPage() {
   const [specsJson, setSpecsJson] = useState('{"resolution": "4K", "battery_life": "5 hours"}');
   const [guidelines, setGuidelines] = useState("Return in padded case after event.");
   const [statusMsg, setStatusMsg] = useState("");
+
+  const canManageResources = user?.role === "club_officer" || user?.role === "admin";
 
   async function loadResources() {
     const params = new URLSearchParams();
@@ -34,6 +37,7 @@ export default function CatalogPage() {
 
   async function handleAddResource(e: React.FormEvent) {
     e.preventDefault();
+    if (!canManageResources) return;
     setStatusMsg("");
     try {
       const parsedSpecs = JSON.parse(specsJson || "{}");
@@ -69,8 +73,10 @@ export default function CatalogPage() {
   }
 
   useEffect(() => {
-    loadResources();
-  }, [condition, availableOnly]);
+    if (user) {
+      loadResources();
+    }
+  }, [user, condition, availableOnly]);
 
   function conditionBadge(cond: string) {
     if (cond === "excellent") return "badge badge-green";
@@ -79,23 +85,31 @@ export default function CatalogPage() {
     return "badge badge-red";
   }
 
+  if (loading || !user) return null;
+
   return (
     <div>
-      <Navbar />
+      <Navbar user={user} onLogout={logout} />
       <main className="container">
         <div className="page-hero">
           <div>
             <h1>Campus Club Resource Catalog</h1>
             <p>
-              Hybrid Inventory: Relational stock & availability in MySQL + Schema-less technical specs in MongoDB
+              Hybrid Inventory: Relational stock &amp; availability in MySQL + Schema-less technical specs in MongoDB
             </p>
           </div>
-          <button className="btn btn-primary" onClick={() => setShowAdd(!showAdd)}>
-            {showAdd ? "Close Form" : "+ Register New Resource"}
-          </button>
+          {canManageResources ? (
+            <button className="btn btn-primary" onClick={() => setShowAdd(!showAdd)}>
+              {showAdd ? "Close Form" : "+ Register New Resource"}
+            </button>
+          ) : (
+            <span className="badge badge-indigo" style={{ padding: "0.45rem 0.9rem" }}>
+              Student View (Read &amp; Search Only)
+            </span>
+          )}
         </div>
 
-        {showAdd && (
+        {canManageResources && showAdd && (
           <form onSubmit={handleAddResource} className="card" style={{ marginBottom: "1.75rem" }}>
             <h3 style={{ marginBottom: "1rem" }}>Register Club Resource (Writes to MySQL + MongoDB)</h3>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
@@ -115,7 +129,7 @@ export default function CatalogPage() {
                   <option value="2">2 - Projector</option>
                   <option value="3">3 - Microphone</option>
                   <option value="4">4 - Event Space</option>
-                  <option value="5">5 - Lighting & Audio</option>
+                  <option value="5">5 - Lighting &amp; Audio</option>
                 </select>
               </div>
               <div>

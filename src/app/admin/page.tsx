@@ -2,25 +2,52 @@
 
 import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
+import { useAuth } from "@/lib/useAuth";
 
 export default function AdminAnalyticsPage() {
+  const { user, loading, isAuthorized, logout } = useAuth(["admin"]);
   const [data, setData] = useState<any>(null);
 
   useEffect(() => {
-    fetch("/api/analytics")
-      .then((res) => res.json())
-      .then(setData);
-  }, []);
+    if (user && isAuthorized) {
+      fetch("/api/analytics")
+        .then((res) => res.json())
+        .then(setData);
+    }
+  }, [user, isAuthorized]);
+
+  if (loading || !user) return null;
+
+  if (!isAuthorized) {
+    return (
+      <div>
+        <Navbar user={user} onLogout={logout} />
+        <main className="container">
+          <div className="card" style={{ padding: "2.5rem", textAlign: "center" }}>
+            <span className="badge badge-red">RBAC Access Restricted</span>
+            <h2 style={{ marginTop: "0.75rem" }}>Administrator Role Required</h2>
+            <p style={{ color: "#64748b", marginTop: "0.5rem" }}>
+              You are currently signed in as <strong>{user.name}</strong> (Role: <code>{user.role}</code>). Only users registered in the MySQL <code>ADMIN</code> subtype table can view the Administrative Utilization &amp; Analytics Dashboard.
+            </p>
+            <button onClick={logout} className="btn btn-primary" style={{ marginTop: "1.25rem" }}>
+              Switch to Admin Account
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div>
-      <Navbar />
+      <Navbar user={user} onLogout={logout} />
       <main className="container">
         <div className="page-hero">
           <div>
-            <h1>Administrative Utilization & Analytics Dashboard</h1>
+            <h1>Administrative Utilization &amp; Analytics Dashboard</h1>
             <p>Complex MySQL Queries (`JOIN`, `GROUP BY`, `HAVING`, Views) + MongoDB Aggregation Pipelines</p>
           </div>
+          <span className="badge badge-amber">{user.admin_level || "Super Admin"}</span>
         </div>
 
         {!data ? (
@@ -63,7 +90,7 @@ export default function AdminAnalyticsPage() {
                   {data.borrowingPatterns?.map((item: any, idx: number) => (
                     <div key={idx} style={{ display: "flex", justifyContent: "space-between", padding: "0.7rem", background: "#f8fafc", borderRadius: 8 }}>
                       <div>
-                        <strong>{item.borrowing_club}</strong> $\rightarrow$ <strong>{item.lending_club}</strong>
+                        <strong>{item.borrowing_club}</strong> &rarr; <strong>{item.lending_club}</strong>
                       </div>
                       <span className="badge badge-indigo">{item.approved_exchanges} / {item.total_exchanges} approved</span>
                     </div>

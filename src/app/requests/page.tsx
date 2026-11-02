@@ -2,14 +2,16 @@
 
 import { useState } from "react";
 import Navbar from "@/components/Navbar";
+import { useAuth } from "@/lib/useAuth";
 
 export default function RequestsPage() {
+  const { user, loading, logout } = useAuth();
   const [clubId, setClubId] = useState("2");
   const [resourceId, setResourceId] = useState("1");
   const [purpose, setPurpose] = useState("Annual Technical Symposium Coverage");
   const [quantity, setQuantity] = useState("2");
-  const [startTime, setStartTime] = useState("2026-11-02T10:00");
-  const [endTime, setEndTime] = useState("2026-11-02T16:00");
+  const [startTime, setStartTime] = useState("2026-11-03T06:00");
+  const [endTime, setEndTime] = useState("2026-11-03T10:00");
   const [conflictInfo, setConflictInfo] = useState<any>(null);
   const [message, setMessage] = useState("");
 
@@ -42,15 +44,18 @@ export default function RequestsPage() {
     }
   }
 
+  if (loading || !user) return null;
+
   return (
     <div>
-      <Navbar />
+      <Navbar user={user} onLogout={logout} />
       <main className="container">
         <div className="page-hero">
           <div>
-            <h1>Inter-Club Resource Reservation & Conflict Detector</h1>
-            <p>Powered by MySQL Stored Procedures (`sp_check_scheduling_conflict` & `sp_suggest_alternative_resources`)</p>
+            <h1>Inter-Club Resource Reservation &amp; Conflict Detector</h1>
+            <p>Powered by MySQL Stored Procedures (`sp_check_scheduling_conflict` &amp; `sp_suggest_alternative_resources`)</p>
           </div>
+          <span className="badge badge-indigo">Logged in as {user.name} ({user.role})</span>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: "1.5rem", alignItems: "start" }}>
@@ -109,7 +114,7 @@ export default function RequestsPage() {
           </div>
 
           <div className="card">
-            <h3 style={{ marginBottom: "0.75rem" }}>Intelligent Availability & Alternatives</h3>
+            <h3 style={{ marginBottom: "0.75rem" }}>Intelligent Availability &amp; Alternatives</h3>
             {!conflictInfo ? (
               <p style={{ color: "#64748b", fontSize: "0.92rem" }}>
                 Click <strong>"1. Check Time Conflict"</strong> to run the MySQL conflict stored procedure for your selected time window.
@@ -182,4 +187,3 @@ export default function RequestsPage() {
     </div>
   );
 }
-

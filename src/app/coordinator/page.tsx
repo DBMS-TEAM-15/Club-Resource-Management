@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Navbar from "@/components/Navbar";
+import { useAuth } from "@/lib/useAuth";
 
 export default function CoordinatorPortal() {
+  const { user, loading, isAuthorized, logout } = useAuth(["club_officer", "admin"]);
   const [requests, setRequests] = useState<any[]>([]);
-  const [logs, setLogs] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [actionMsg, setActionMsg] = useState("");
 
-  // Maintenance form state
   const [resId, setResId] = useState("1");
   const [issueType, setIssueType] = useState("routine_check");
   const [condAfter, setCondAfter] = useState("excellent");
@@ -17,16 +17,13 @@ export default function CoordinatorPortal() {
   const [notes, setNotes] = useState("");
 
   async function loadAll() {
-    const [reqRes, maintRes, notifRes] = await Promise.all([
+    const [reqRes, notifRes] = await Promise.all([
       fetch("/api/requests"),
-      fetch("/api/maintenance"),
-      fetch("/api/maintenance?userId=2"),
+      fetch(`/api/maintenance?userId=2`),
     ]);
     const reqData = await reqRes.json();
-    const maintData = await maintRes.json();
     const notifData = await notifRes.json();
     setRequests(reqData.requests || []);
-    setLogs(maintData.maintenance_logs || []);
     setNotifications(notifData.notifications || []);
   }
 
@@ -35,7 +32,12 @@ export default function CoordinatorPortal() {
     const res = await fetch("/api/allocations", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ action, request_id: requestId, allocation_id: allocationId, approved_by: 4 }),
+      body: JSON.stringify({
+        action,
+        request_id: requestId,
+        allocation_id: allocationId,
+        approved_by: user?.user_id || 4,
+      }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -53,7 +55,7 @@ export default function CoordinatorPortal() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         resource_id: Number(resId),
-        reported_by_user_id: 2,
+        reported_by_user_id: user?.user_id || 2,
         issue_type: issueType,
         condition_after: condAfter,
         cost_incurred: Number(cost),
@@ -61,22 +63,48 @@ export default function CoordinatorPortal() {
       }),
     });
     setNotes("");
+    setActionMsg(`Maintenance event recorded in MongoDB & synced condition to '${condAfter}' in MySQL!`);
     loadAll();
   }
 
   useEffect(() => {
-    loadAll();
-  }, []);
+    if (user && isAuthorized) {
+      loadAll();
+    }
+  }, [user, isAuthorized]);
+
+  if (loading || !user) return null;
+
+  if (!isAuthorized) {
+    return (
+      <div>
+        <Navbar user={user} onLogout={logout} />
+        <main className="container">
+          <div className="card" style={{ padding: "2.5rem", textAlign: "center" }}>
+            <span className="badge badge-red">RBAC Access Restricted</span>
+            <h2 style={{ marginTop: "0.75rem" }}>Club Manager or Admin Role Required</h2>
+            <p style={{ color: "#64748b", marginTop: "0.5rem" }}>
+              You are currently signed in as <strong>{user.name}</strong> (Role: <code>{user.role}</code>). Only users in the <code>CLUB_OFFICER</code> or <code>ADMIN</code> tables can approve requests, process returns, or log equipment maintenance.
+            </p>
+            <button onClick={logout} className="btn btn-primary" style={{ marginTop: "1.25rem" }}>
+              Switch to Club Manager or Admin Account
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div>
-      <Navbar />
+      <Navbar user={user} onLogout={logout} />
       <main className="container">
         <div className="page-hero">
           <div>
-            <h1>Coordinator Approval, Return & Maintenance Portal</h1>
-            <p>ACID Transactions, MySQL Stock/Notification Triggers & MongoDB Maintenance Logs</p>
+            <h1>Coordinator Approval, Return &amp; Maintenance Portal</h1>
+            <p>ACID Transactions, MySQL Stock/Notification Triggers &amp; MongoDB Maintenance Logs</p>
           </div>
+          <span className="badge badge-green">{user.club_role || user.admin_level || "Coordinator"}</span>
         </div>
 
         {actionMsg && (
@@ -217,4 +245,3 @@ export default function CoordinatorPortal() {
     </div>
   );
 }
-
