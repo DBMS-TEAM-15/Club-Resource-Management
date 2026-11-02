@@ -1,13 +1,18 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Navbar from "@/components/Navbar";
 import { useAuth } from "@/lib/useAuth";
 
 export default function CatalogPage() {
+  const router = useRouter();
   const { user, loading, logout } = useAuth();
   const [resources, setResources] = useState<any[]>([]);
+  const [clubs, setClubs] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [q, setQ] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
   const [condition, setCondition] = useState("");
   const [availableOnly, setAvailableOnly] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
@@ -19,15 +24,29 @@ export default function CatalogPage() {
   const [qty, setQty] = useState("1");
   const [location, setLocation] = useState("");
   const [resCondition, setResCondition] = useState("excellent");
-  const [specsJson, setSpecsJson] = useState('{"resolution": "4K", "battery_life": "5 hours"}');
-  const [guidelines, setGuidelines] = useState("Return in padded case after event.");
+  const [specPairs, setSpecPairs] = useState<{ key: string; value: string }[]>([
+    { key: "resolution", value: "4K 60fps" },
+    { key: "battery_life", value: "5 hours" },
+  ]);
+  const [accessoriesCsv, setAccessoriesCsv] = useState("Padded Carry Case, Power Cable");
+  const [guidelines, setGuidelines] = useState("Return in original case after event.");
   const [statusMsg, setStatusMsg] = useState("");
 
   const canManageResources = user?.role === "club_officer" || user?.role === "admin";
 
+  async function loadMeta() {
+    const res = await fetch("/api/clubs");
+    const data = await res.json();
+    setClubs(data.clubs || []);
+    setCategories(data.categories || []);
+    if (data.clubs?.[0] && !clubId) setClubId(String(data.clubs[0].club_id));
+    if (data.categories?.[0] && !categoryId) setCategoryId(String(data.categories[0].category_id));
+  }
+
   async function loadResources() {
     const params = new URLSearchParams();
     if (q) params.set("q", q);
+    if (categoryFilter) params.set("categoryId", categoryFilter);
     if (condition) params.set("condition", condition);
     if (availableOnly) params.set("availableOnly", "true");
     const res = await fetch(`/api/resources?${params.toString()}`);
@@ -35,12 +54,36 @@ export default function CatalogPage() {
     setResources(data.resources || []);
   }
 
+  function updateSpecPair(index: number, field: "key" | "value", val: string) {
+    const updated = [...specPairs];
+    updated[index][field] = val;
+    setSpecPairs(updated);
+  }
+
+  function addSpecPair() {
+    setSpecPairs([...specPairs, { key: "", value: "" }]);
+  }
+
+  function removeSpecPair(index: number) {
+    setSpecPairs(specPairs.filter((_, idx) => idx !== index));
+  }
+
   async function handleAddResource(e: React.FormEvent) {
     e.preventDefault();
     if (!canManageResources) return;
     setStatusMsg("");
     try {
-      const parsedSpecs = JSON.parse(specsJson || "{}");
+      const specifications: Record<string, string> = {};
+      for (const pair of specPairs) {
+        if (pair.key.trim()) {
+          specifications[pair.key.trim()] = pair.value.trim();
+        }
+      }
+      const accessories = accessoriesCsv
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+
       const res = await fetch("/api/resources", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -52,31 +95,40 @@ export default function CatalogPage() {
           quantity_total: Number(qty),
           location,
           condition: resCondition,
-          specifications: parsedSpecs,
+          specifications,
+          accessories_included: accessories,
           usage_guidelines: guidelines,
           tags: [resCondition, "club-asset"],
         }),
       });
       const data = await res.json();
       if (res.ok) {
-        setStatusMsg(`Added "${name}" (Resource #${data.resource_id}) to MySQL & MongoDB!`);
+        setStatusMsg(
+          `Saved "${name}" (Resource #${data.resource_id}) to BOTH MySQL (RESOURCE) and MongoDB (resource_specs)!`
+        );
         setName("");
         setDescription("");
         setLocation("");
-        loadResources();
+        await loadResources();
       } else {
         setStatusMsg(`Error: ${data.error}`);
       }
     } catch (err: any) {
-      setStatusMsg(`Invalid JSON in specifications: ${err.message}`);
+      setStatusMsg(`Error: ${err.message}`);
     }
   }
 
   useEffect(() => {
     if (user) {
+      loadMeta();
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
       loadResources();
     }
-  }, [user, condition, availableOnly]);
+  }, [user, categoryFilter, condition, availableOnly]);
 
   function conditionBadge(cond: string) {
     if (cond === "excellent") return "badge badge-green";
@@ -104,7 +156,7 @@ export default function CatalogPage() {
             </button>
           ) : (
             <span className="badge badge-indigo" style={{ padding: "0.45rem 0.9rem" }}>
-              Student View (Read &amp; Search Only)
+              Student View (Can Browse &amp; Reserve Any Item)
             </span>
           )}
         </div>
@@ -114,27 +166,28 @@ export default function CatalogPage() {
             <h3 style={{ marginBottom: "1rem" }}>Register Club Resource (Writes to MySQL + MongoDB)</h3>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "1rem" }}>
               <div>
-                <label style={{ fontSize: "0.82rem", fontWeight: 600 }}>Owner Club</label>
+                <label style={{ fontSize: "0.82rem", fontWeight: 600 }}>Owner Club (MySQL)</label>
                 <select className="select" value={clubId} onChange={(e) => setClubId(e.target.value)}>
-                  <option value="1">1 - Photography Club</option>
-                  <option value="2">2 - Robotics Club</option>
-                  <option value="3">3 - Drama Society</option>
-                  <option value="4">4 - Music Club</option>
+                  {clubs.map((c) => (
+                    <option key={c.club_id} value={c.club_id}>
+                      {c.club_id} - {c.club_name}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: "0.82rem", fontWeight: 600 }}>Category</label>
+                <label style={{ fontSize: "0.82rem", fontWeight: 600 }}>Category (MySQL + MongoDB)</label>
                 <select className="select" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-                  <option value="1">1 - Camera</option>
-                  <option value="2">2 - Projector</option>
-                  <option value="3">3 - Microphone</option>
-                  <option value="4">4 - Event Space</option>
-                  <option value="5">5 - Lighting &amp; Audio</option>
+                  {categories.map((cat) => (
+                    <option key={cat.category_id} value={cat.category_id}>
+                      {cat.category_id} - {cat.category_name}
+                    </option>
+                  ))}
                 </select>
               </div>
               <div>
                 <label style={{ fontSize: "0.82rem", fontWeight: 600 }}>Resource Name</label>
-                <input className="input" required value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Godox SL60W LED Light" />
+                <input className="input" required value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Canon D500 DSLR" />
               </div>
               <div>
                 <label style={{ fontSize: "0.82rem", fontWeight: 600 }}>Total Quantity</label>
@@ -154,23 +207,65 @@ export default function CatalogPage() {
                 </select>
               </div>
             </div>
+
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginTop: "1rem" }}>
               <div>
-                <label style={{ fontSize: "0.82rem", fontWeight: 600 }}>Description (MySQL)</label>
-                <input className="input" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief description of the equipment" />
+                <label style={{ fontSize: "0.82rem", fontWeight: 600 }}>Description (MySQL `RESOURCE`)</label>
+                <input className="input" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Camera body with kit lens attached" />
               </div>
               <div>
-                <label style={{ fontSize: "0.82rem", fontWeight: 600 }}>Usage Guidelines (MongoDB)</label>
-                <input className="input" value={guidelines} onChange={(e) => setGuidelines(e.target.value)} />
+                <label style={{ fontSize: "0.82rem", fontWeight: 600 }}>Accessories Included (MongoDB Array)</label>
+                <input className="input" value={accessoriesCsv} onChange={(e) => setAccessoriesCsv(e.target.value)} placeholder="Comma separated, e.g., Charger, SD Card, Case" />
               </div>
             </div>
+
             <div style={{ marginTop: "1rem" }}>
-              <label style={{ fontSize: "0.82rem", fontWeight: 600 }}>Flexible Technical Specifications JSON (MongoDB `resource_specs`)</label>
-              <input className="input" value={specsJson} onChange={(e) => setSpecsJson(e.target.value)} />
+              <label style={{ fontSize: "0.82rem", fontWeight: 600 }}>Usage Guidelines (MongoDB `resource_specs`)</label>
+              <input className="input" value={guidelines} onChange={(e) => setGuidelines(e.target.value)} />
             </div>
+
+            <div style={{ marginTop: "1rem", background: "#f8fafc", padding: "1rem", borderRadius: 10, border: "1px solid #e2e8f0" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.6rem" }}>
+                <label style={{ fontSize: "0.84rem", fontWeight: 700, color: "#3730a3" }}>
+                  Flexible Technical Specifications (Stored in MongoDB `resource_specs`)
+                </label>
+                <button type="button" onClick={addSpecPair} className="btn btn-secondary" style={{ padding: "0.3rem 0.75rem", fontSize: "0.78rem" }}>
+                  + Add Spec Attribute
+                </button>
+              </div>
+              <div style={{ display: "grid", gap: "0.5rem" }}>
+                {specPairs.map((pair, idx) => (
+                  <div key={idx} style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                    <input
+                      className="input"
+                      placeholder="Attribute (e.g., sensor, lumens)"
+                      value={pair.key}
+                      onChange={(e) => updateSpecPair(idx, "key", e.target.value)}
+                    />
+                    <input
+                      className="input"
+                      placeholder="Value (e.g., 24MP APS-C, 4000)"
+                      value={pair.value}
+                      onChange={(e) => updateSpecPair(idx, "value", e.target.value)}
+                    />
+                    {specPairs.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeSpecPair(idx)}
+                        className="btn btn-danger"
+                        style={{ padding: "0.45rem 0.75rem", fontSize: "0.78rem" }}
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
             <div style={{ marginTop: "1rem", display: "flex", gap: "1rem", alignItems: "center" }}>
-              <button type="submit" className="btn btn-primary">Save Resource</button>
-              {statusMsg && <span style={{ fontWeight: 600, color: "#4338ca" }}>{statusMsg}</span>}
+              <button type="submit" className="btn btn-primary">Save to MySQL &amp; MongoDB</button>
+              {statusMsg && <span style={{ fontWeight: 600, color: statusMsg.startsWith("Error") ? "#dc2626" : "#059669" }}>{statusMsg}</span>}
             </div>
           </form>
         )}
@@ -178,14 +273,27 @@ export default function CatalogPage() {
         <div className="card" style={{ marginBottom: "1.75rem", display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
           <input
             className="input"
-            style={{ flex: 1, minWidth: 240 }}
+            style={{ flex: 1, minWidth: 220 }}
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Full-Text Search (e.g., Canon, Projector, XLR, Wireless)..."
           />
           <select
             className="select"
-            style={{ width: 190 }}
+            style={{ width: 175 }}
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+          >
+            <option value="">All Categories</option>
+            {categories.map((cat) => (
+              <option key={cat.category_id} value={cat.category_id}>
+                {cat.category_name}
+              </option>
+            ))}
+          </select>
+          <select
+            className="select"
+            style={{ width: 175 }}
             value={condition}
             onChange={(e) => setCondition(e.target.value)}
           >
@@ -232,27 +340,46 @@ export default function CatalogPage() {
                     </strong>
                   </div>
                 </div>
+
+                {r.mongo_specs?.specifications && (
+                  <div style={{ marginTop: "1rem", paddingTop: "0.85rem", borderTop: "1px dashed #cbd5e1" }}>
+                    <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#4f46e5", textTransform: "uppercase", marginBottom: "0.4rem" }}>
+                      MongoDB Technical Specs (`resource_specs`)
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+                      {Object.entries(r.mongo_specs.specifications).map(([k, v]) => (
+                        <span key={k} className="badge badge-slate" style={{ textTransform: "none" }}>
+                          {k}: {Array.isArray(v) ? v.join(", ") : String(v)}
+                        </span>
+                      ))}
+                    </div>
+                    {r.mongo_specs.accessories_included?.length > 0 && (
+                      <div style={{ fontSize: "0.78rem", color: "#334155", marginTop: "0.45rem" }}>
+                        <strong>Accessories:</strong> {r.mongo_specs.accessories_included.join(", ")}
+                      </div>
+                    )}
+                    {r.mongo_specs.usage_guidelines && (
+                      <p style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "0.35rem", fontStyle: "italic" }}>
+                        Note: {r.mongo_specs.usage_guidelines}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
 
-              {r.mongo_specs?.specifications && (
-                <div style={{ marginTop: "1rem", paddingTop: "0.85rem", borderTop: "1px dashed #cbd5e1" }}>
-                  <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#4f46e5", textTransform: "uppercase", marginBottom: "0.4rem" }}>
-                    MongoDB Technical Specs
-                  </div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
-                    {Object.entries(r.mongo_specs.specifications).map(([k, v]) => (
-                      <span key={k} className="badge badge-slate" style={{ textTransform: "none" }}>
-                        {k}: {Array.isArray(v) ? v.join(", ") : String(v)}
-                      </span>
-                    ))}
-                  </div>
-                  {r.mongo_specs.usage_guidelines && (
-                    <p style={{ fontSize: "0.78rem", color: "#64748b", marginTop: "0.5rem", fontStyle: "italic" }}>
-                      Note: {r.mongo_specs.usage_guidelines}
-                    </p>
-                  )}
-                </div>
-              )}
+              <div style={{ marginTop: "1rem", paddingTop: "0.75rem", borderTop: "1px solid #f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: "0.78rem", color: "#64748b" }}>
+                  {r.quantity_currently_available > 0 ? "Ready to borrow" : "Check time-slot conflicts"}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => router.push(`/requests?resourceId=${r.resource_id}`)}
+                  className="btn btn-primary"
+                  style={{ padding: "0.45rem 0.9rem", fontSize: "0.82rem" }}
+                >
+                  Reserve This Item &rarr;
+                </button>
+              </div>
             </div>
           ))}
         </div>

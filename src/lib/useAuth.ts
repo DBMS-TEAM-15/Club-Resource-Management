@@ -63,3 +63,4 @@ export function useAuth(allowedRoles?: UserRole[]) {
 
   return { user, loading, isAuthorized, logout };
 }
+

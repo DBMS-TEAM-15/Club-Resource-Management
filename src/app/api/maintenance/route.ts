@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/db/mysql";
 import clientPromise from "@/lib/db/mongodb";
+import { Int32 } from "mongodb";
 import { RowDataPacket } from "mysql2";
 
 const DB_NAME = "campus_club_resource_exchange";
@@ -13,8 +14,7 @@ export async function GET(req: NextRequest) {
 
     if (userId) {
       const [rows] = await pool.query<RowDataPacket[]>(
-        `SELECT * FROM NOTIFICATION WHERE user_id = ? ORDER BY created_at DESC LIMIT 25`,
-        [Number(userId)]
+        `SELECT * FROM NOTIFICATION ORDER BY created_at DESC LIMIT 25`
       );
       return NextResponse.json({ notifications: rows });
     }
@@ -40,11 +40,11 @@ export async function POST(req: NextRequest) {
     const db = mongoClient.db(DB_NAME);
 
     const logDoc = {
-      resource_id: Number(resource_id),
-      reported_by_user_id: Number(reported_by_user_id),
+      resource_id: new Int32(Number(resource_id)),
+      reported_by_user_id: new Int32(Number(reported_by_user_id || 2)),
       issue_type: issue_type || "routine_check",
-      notes: notes || "",
-      condition_before: condition_before || "good",
+      notes: String(notes || ""),
+      condition_before: String(condition_before || "good"),
       condition_after: condition_after || "good",
       checklist: { inspected: true },
       cost_incurred: Number(cost_incurred || 0),

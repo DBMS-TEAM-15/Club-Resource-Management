@@ -7,6 +7,8 @@ import { useAuth } from "@/lib/useAuth";
 export default function CoordinatorPortal() {
   const { user, loading, isAuthorized, logout } = useAuth(["club_officer", "admin"]);
   const [requests, setRequests] = useState<any[]>([]);
+  const [resources, setResources] = useState<any[]>([]);
+  const [maintenanceLogs, setMaintenanceLogs] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [actionMsg, setActionMsg] = useState("");
 
@@ -17,13 +19,20 @@ export default function CoordinatorPortal() {
   const [notes, setNotes] = useState("");
 
   async function loadAll() {
-    const [reqRes, notifRes] = await Promise.all([
+    const [reqRes, resCatalog, maintRes, notifRes] = await Promise.all([
       fetch("/api/requests"),
+      fetch("/api/resources"),
+      fetch("/api/maintenance"),
       fetch(`/api/maintenance?userId=2`),
     ]);
     const reqData = await reqRes.json();
+    const resData = await resCatalog.json();
+    const maintData = await maintRes.json();
     const notifData = await notifRes.json();
+
     setRequests(reqData.requests || []);
+    setResources(resData.resources || []);
+    setMaintenanceLogs(maintData.maintenance_logs || []);
     setNotifications(notifData.notifications || []);
   }
 
@@ -50,7 +59,7 @@ export default function CoordinatorPortal() {
 
   async function handleLogMaintenance(e: React.FormEvent) {
     e.preventDefault();
-    await fetch("/api/maintenance", {
+    const res = await fetch("/api/maintenance", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -62,9 +71,14 @@ export default function CoordinatorPortal() {
         notes,
       }),
     });
-    setNotes("");
-    setActionMsg(`Maintenance event recorded in MongoDB & synced condition to '${condAfter}' in MySQL!`);
-    loadAll();
+    const data = await res.json();
+    if (res.ok) {
+      setNotes("");
+      setActionMsg(`Maintenance event recorded in MongoDB (maintenance_logs) & synced condition to '${condAfter}' in MySQL!`);
+      loadAll();
+    } else {
+      setActionMsg(`Error: ${data.error}`);
+    }
   }
 
   useEffect(() => {
@@ -114,8 +128,8 @@ export default function CoordinatorPortal() {
               padding: "0.9rem 1.2rem",
               borderRadius: 10,
               fontWeight: 600,
-              background: actionMsg.startsWith("Trigger") ? "#fee2e2" : "#d1fae5",
-              color: actionMsg.startsWith("Trigger") ? "#991b1b" : "#065f46",
+              background: actionMsg.startsWith("Trigger") || actionMsg.startsWith("Error") ? "#fee2e2" : "#d1fae5",
+              color: actionMsg.startsWith("Trigger") || actionMsg.startsWith("Error") ? "#991b1b" : "#065f46",
             }}
           >
             {actionMsg}
@@ -190,12 +204,18 @@ export default function CoordinatorPortal() {
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
           <form onSubmit={handleLogMaintenance} className="card" style={{ display: "grid", gap: "0.85rem" }}>
-            <h3>Log Equipment Maintenance (MongoDB + MySQL Condition Sync)</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
-              <div>
-                <label style={{ fontSize: "0.82rem", fontWeight: 600 }}>Resource ID</label>
-                <input className="input" type="number" value={resId} onChange={(e) => setResId(e.target.value)} />
-              </div>
+            <h3>Log Equipment Maintenance (MongoDB + MySQL Sync)</h3>
+            <div>
+              <label style={{ fontSize: "0.82rem", fontWeight: 600 }}>Select Resource from Catalog</label>
+              <select className="select" value={resId} onChange={(e) => setResId(e.target.value)}>
+                {resources.map((r) => (
+                  <option key={r.resource_id} value={r.resource_id}>
+                    #{r.resource_id} — {r.resource_name} (Current: {r.condition})
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
               <div>
                 <label style={{ fontSize: "0.82rem", fontWeight: 600 }}>Issue Type</label>
                 <select className="select" value={issueType} onChange={(e) => setIssueType(e.target.value)}>
@@ -216,20 +236,34 @@ export default function CoordinatorPortal() {
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: "0.82rem", fontWeight: 600 }}>Cost Incurred (Rs.)</label>
+                <label style={{ fontSize: "0.82rem", fontWeight: 600 }}>Cost (Rs.)</label>
                 <input className="input" type="number" value={cost} onChange={(e) => setCost(e.target.value)} />
               </div>
             </div>
             <div>
-              <label style={{ fontSize: "0.82rem", fontWeight: 600 }}>Inspection / Repair Notes</label>
+              <label style={{ fontSize: "0.82rem", fontWeight: 600 }}>Inspection / Repair Notes (MongoDB)</label>
               <input className="input" required value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Cleaned lens, tested HDMI port..." />
             </div>
             <button type="submit" className="btn btn-primary">Record Maintenance Log</button>
+
+            <div style={{ marginTop: "0.75rem", borderTop: "1px solid #e2e8f0", paddingTop: "0.75rem" }}>
+              <div style={{ fontSize: "0.82rem", fontWeight: 700, marginBottom: "0.5rem" }}>
+                Recent MongoDB `maintenance_logs` Documents:
+              </div>
+              <div style={{ display: "grid", gap: "0.45rem", maxHeight: 160, overflowY: "auto" }}>
+                {maintenanceLogs.map((m, idx) => (
+                  <div key={idx} style={{ fontSize: "0.8rem", background: "#f8fafc", padding: "0.55rem", borderRadius: 6 }}>
+                    <strong>Resource #{m.resource_id}</strong> • <span className="badge badge-slate">{m.issue_type}</span> • Condition &rarr; <strong>{m.condition_after}</strong> (Rs. {m.cost_incurred})
+                    <div style={{ color: "#475569", marginTop: 2 }}>{m.notes}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </form>
 
           <div className="card">
             <h3 style={{ marginBottom: "0.75rem" }}>Trigger-Generated Notifications (`NOTIFICATION` Table)</h3>
-            <div style={{ display: "grid", gap: "0.6rem", maxHeight: 280, overflowY: "auto" }}>
+            <div style={{ display: "grid", gap: "0.6rem", maxHeight: 420, overflowY: "auto" }}>
               {notifications.map((n) => (
                 <div key={n.notification_id} style={{ padding: "0.7rem", background: "#f8fafc", borderRadius: 8, borderLeft: "4px solid #4f46e5", fontSize: "0.86rem" }}>
                   <div>{n.message}</div>

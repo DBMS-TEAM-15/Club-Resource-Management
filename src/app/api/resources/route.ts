@@ -1,6 +1,7 @@
-  import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/db/mysql";
 import clientPromise from "@/lib/db/mongodb";
+import { Int32 } from "mongodb";
 import { ResultSetHeader, RowDataPacket } from "mysql2";
 
 const DB_NAME = "campus_club_resource_exchange";
@@ -33,8 +34,10 @@ export async function GET(req: NextRequest) {
       conditions.push(`v.quantity_currently_available > 0`);
     }
     if (q) {
-      conditions.push(`(MATCH(r.name, r.description, r.location) AGAINST(? IN NATURAL LANGUAGE MODE) OR v.resource_name LIKE ?)`);
-      values.push(q, `%${q}%`);
+      conditions.push(
+        `(MATCH(r.name, r.description, r.location) AGAINST(? IN NATURAL LANGUAGE MODE) OR v.resource_name LIKE ? OR v.category_name LIKE ?)`
+      );
+      values.push(q, `%${q}%`, `%${q}%`);
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
@@ -48,14 +51,14 @@ export async function GET(req: NextRequest) {
 
     const [rows] = await pool.query<RowDataPacket[]>(sql, values);
 
-    let specsMap = new Map<number, any>();
+    const specsMap = new Map<number, any>();
     try {
       const mongoClient = await clientPromise;
       const db = mongoClient.db(DB_NAME);
       const specs = await db.collection("resource_specs").find({}).toArray();
       specs.forEach((s: any) => specsMap.set(Number(s.resource_id), s));
     } catch {
-      // Fallback if MongoDB is offline in dev
+      // Fallback if MongoDB is offline
     }
 
     const resources = rows.map((row) => ({
@@ -99,32 +102,45 @@ export async function POST(req: NextRequest) {
         condition || "good",
       ]
     );
-    const resourceId = res.insertId;
+    const resourceId = Number(res.insertId);
 
-    if (specifications) {
-      const [catRows] = await pool.query<RowDataPacket[]>(
-        `SELECT category_name FROM RESOURCE_CATEGORY WHERE category_id = ?`,
-        [Number(category_id)]
-      );
-      const mongoClient = await clientPromise;
-      const db = mongoClient.db(DB_NAME);
-      await db.collection("resource_specs").updateOne(
-        { resource_id: Number(resourceId) },
-        {
-          $set: {
-            resource_id: Number(resourceId),
-            category_name: catRows[0]?.category_name || "General",
-            specifications,
-            accessories_included: accessories_included || [],
-            usage_guidelines: usage_guidelines || "",
-            tags: tags || [],
-          },
-        },
-        { upsert: true }
-      );
-    }
+    const [catRows] = await pool.query<RowDataPacket[]>(
+      `SELECT category_name FROM RESOURCE_CATEGORY WHERE category_id = ?`,
+      [Number(category_id)]
+    );
+    const categoryName = catRows[0]?.category_name || "General";
 
-    return NextResponse.json({ resource_id: resourceId, name }, { status: 201 });
+    const mongoClient = await clientPromise;
+    const db = mongoClient.db(DB_NAME);
+    const specDoc = {
+      resource_id: new Int32(resourceId),
+      category_name: String(categoryName),
+      specifications:
+        specifications && typeof specifications === "object"
+          ? specifications
+          : { status: "standard" },
+      accessories_included: Array.isArray(accessories_included)
+        ? accessories_included.map(String)
+        : [],
+      usage_guidelines: String(usage_guidelines || "Handle with care and return on time."),
+      tags: Array.isArray(tags) ? tags.map(String) : [String(condition || "good")],
+    };
+
+    await db.collection("resource_specs").replaceOne(
+      { resource_id: resourceId },
+      specDoc,
+      { upsert: true }
+    );
+
+    return NextResponse.json(
+      {
+        resource_id: resourceId,
+        name,
+        mongo_saved: true,
+        mongo_specs: specDoc,
+      },
+      { status: 201 }
+    );
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 400 });
   }

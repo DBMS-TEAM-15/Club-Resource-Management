@@ -101,6 +101,56 @@ database.resource_specs.insertMany([
     accessories_included: ["XLR Cable (6m)", "Mic Stand Clip", "Foam Windscreen"],
     usage_guidelines: "Do not drop or tap the grille forcefully.",
     tags: ["microphone", "vocal", "stage", "xlr", "shure"]
+  },
+  {
+    resource_id: Int32(6),
+    category_name: "Microphone",
+    specifications: {
+      transmission_type: "2.4GHz Digital Wireless",
+      range_meters: 200,
+      battery_life: "7 hours",
+      connectivity: "USB-C / 3.5mm TRS"
+    },
+    accessories_included: ["2x Transmitters", "1x Receiver", "2x Fur Windshields", "3x USB-C Cables"],
+    usage_guidelines: "Charge both transmitters and receiver fully after recording sessions.",
+    tags: ["wireless", "rode", "microphone", "lavalier"]
+  },
+  {
+    resource_id: Int32(7),
+    category_name: "Stage Space",
+    specifications: {
+      dimensions: "12m x 8m",
+      lighting_rig: "DMX 24-Channel LED Par Cans",
+      power_outlets: "6x 15A Industrial Sockets"
+    },
+    accessories_included: ["DMX Lighting Controller", "Stage Monitors", "Podium"],
+    usage_guidelines: "Clear all props and cables immediately after rehearsal slot ends.",
+    tags: ["stage", "auditorium", "lighting", "rehearsal"]
+  },
+  {
+    resource_id: Int32(8),
+    category_name: "Speaker System",
+    specifications: {
+      power_output: "400W (200W + 200W)",
+      mixer_channels: "8-Channel Detachable Mixer",
+      bluetooth: "Bluetooth 5.0 Audio Streaming",
+      max_spl: "125 dB"
+    },
+    accessories_included: ["2x Speaker Stands", "2x 6m Speaker Cables", "Power Cable"],
+    usage_guidelines: "Turn master volume down to zero before powering on or off.",
+    tags: ["speaker", "pa-system", "yamaha", "mixer"]
+  },
+  {
+    resource_id: Int32(9),
+    category_name: "Microphone",
+    specifications: {
+      type: "Wireless Microphone",
+      port: "USB Type-C",
+      connectivity: "2.4GHz Digital"
+    },
+    accessories_included: ["Receiver", "USB-C Charging Cable", "Wind Muff"],
+    usage_guidelines: "Return in original pouch after event.",
+    tags: ["rode", "wireless", "usb-c", "mic"]
   }
 ]);
 
