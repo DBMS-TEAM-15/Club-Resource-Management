@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import pool from "@/lib/db/mysql";
+import clientPromise from "@/lib/db/mongodb";
 import { getUserWithRoles, hashPassword, verifyPassword } from "@/lib/auth";
 import { ResultSetHeader } from "mysql2";
 
@@ -44,8 +45,25 @@ export async function POST(req: NextRequest) {
         }
 
         await conn.commit();
+
+        try {
+          const mongoClient = await clientPromise;
+          const db = mongoClient.db("campus_club_resource_exchange");
+          await db.collection("user_credentials").insertOne({
+            user_id: userId,
+            name,
+            email,
+            role: roleType || "student",
+            password_hash: passwordHash,
+            created_at: new Date(),
+          });
+        } catch {
+          // Non-blocking if MongoDB is offline
+        }
+
         const createdUser = await getUserWithRoles(email);
-        return NextResponse.json({ user: createdUser }, { status: 201 });
+        const { password_hash, ...safeCreated } = createdUser;
+        return NextResponse.json({ user: safeCreated }, { status: 201 });
       } catch (err: any) {
         await conn.rollback();
         return NextResponse.json({ error: err.message }, { status: 400 });

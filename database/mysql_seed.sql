@@ -5,10 +5,10 @@
 USE campus_club_resource_exchange;
 
 INSERT INTO USER (name, email, password_hash, phone) VALUES
-('Aditi Rao', 'aditi@pes.edu', 'scrypt:demo:aditi123', '9876543210'),
-('Rohan Mehta', 'rohan@pes.edu', 'scrypt:demo:rohan123', '9876500001'),
+('Aaryesh', 'aaryesh@pes.edu', 'scrypt:campus_club_salt_v1:a8f5f167f44f4964e6c998dee827110c:aaryesh123', '9876543210'),
+('Hemaksh', 'hemaksh@pes.edu', 'scrypt:campus_club_salt_v1:d41d8cd98f00b204e9800998ecf8427e:hemaksh123', '9876500001'),
 ('Sara Khan', 'sara@pes.edu', 'scrypt:demo:sara123', '9876500002'),
-('Vikram Singh', 'vikram@pes.edu', 'scrypt:demo:vikram123', '9876500003'),
+('Satish', 'satish@pes.edu', 'scrypt:campus_club_salt_v1:e99a18c428cb38d5f260853678922e03:satish123', '9876500003'),
 ('Priya Nair', 'priya@pes.edu', 'scrypt:demo:priya123', '9876500004');
 
 INSERT INTO CLUB (club_name, description, category) VALUES

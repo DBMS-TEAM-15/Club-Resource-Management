@@ -13,7 +13,7 @@ export default function LoginPage() {
   const [phone, setPhone] = useState("");
   const [roleType, setRoleType] = useState<"student" | "club_officer" | "admin">("student");
   const [rollNo, setRollNo] = useState("");
-  const [clubRole, setClubRole] = useState("Coordinator - Photography Club");
+  const [clubRole, setClubRole] = useState("President - Robotics Club");
   const [clubId, setClubId] = useState("1");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -101,15 +101,15 @@ export default function LoginPage() {
 
             <div style={{ display: "grid", gap: "0.75rem", fontSize: "0.86rem" }}>
               <div style={{ background: "rgba(255,255,255,0.08)", padding: "0.8rem 1rem", borderRadius: 10 }}>
-                <strong style={{ color: "#a5b4fc" }}>1. Student Role (Club Member)</strong>
+                <strong style={{ color: "#a5b4fc" }}>1. Student Role — Aaryesh (`aaryesh@pes.edu`)</strong>
                 <div style={{ color: "#e0e7ff" }}>Can browse &amp; search the hybrid catalog, check time-window conflicts, and submit resource borrow requests.</div>
               </div>
               <div style={{ background: "rgba(255,255,255,0.08)", padding: "0.8rem 1rem", borderRadius: 10 }}>
-                <strong style={{ color: "#6ee7b7" }}>2. Club Manager Role (Coordinator)</strong>
+                <strong style={{ color: "#6ee7b7" }}>2. Club Manager Role — Hemaksh (`hemaksh@pes.edu`)</strong>
                 <div style={{ color: "#e0e7ff" }}>Can register new club resources, approve/reject requests (ACID transactions), mark returns, and log MongoDB maintenance.</div>
               </div>
               <div style={{ background: "rgba(255,255,255,0.08)", padding: "0.8rem 1rem", borderRadius: 10 }}>
-                <strong style={{ color: "#fcd34d" }}>3. Admin Role (Super Admin)</strong>
+                <strong style={{ color: "#fcd34d" }}>3. Admin Role — Satish (`satish@pes.edu`)</strong>
                 <div style={{ color: "#e0e7ff" }}>Full system access including the Administrative Utilization &amp; Analytics Dashboard.</div>
               </div>
             </div>
@@ -122,27 +122,27 @@ export default function LoginPage() {
             <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
               <button
                 type="button"
-                onClick={() => quickLogin("aditi@pes.edu", "aditi123")}
+                onClick={() => quickLogin("aaryesh@pes.edu", "aaryesh123")}
                 className="btn"
                 style={{ background: "#e0e7ff", color: "#1e1b4b", fontSize: "0.8rem", padding: "0.5rem 0.85rem" }}
               >
-                Login as Student (Aditi)
+                Login as Student (Aaryesh)
               </button>
               <button
                 type="button"
-                onClick={() => quickLogin("rohan@pes.edu", "rohan123")}
+                onClick={() => quickLogin("hemaksh@pes.edu", "hemaksh123")}
                 className="btn"
                 style={{ background: "#d1fae5", color: "#065f46", fontSize: "0.8rem", padding: "0.5rem 0.85rem" }}
               >
-                Login as Club Manager (Rohan)
+                Login as Club Manager (Hemaksh)
               </button>
               <button
                 type="button"
-                onClick={() => quickLogin("vikram@pes.edu", "vikram123")}
+                onClick={() => quickLogin("satish@pes.edu", "satish123")}
                 className="btn"
                 style={{ background: "#fef3c7", color: "#92400e", fontSize: "0.8rem", padding: "0.5rem 0.85rem" }}
               >
-                Login as Admin (Vikram)
+                Login as Admin (Satish)
               </button>
             </div>
           </div>
@@ -225,7 +225,7 @@ export default function LoginPage() {
 
             <div>
               <label style={{ fontSize: "0.82rem", fontWeight: 600 }}>Email Address</label>
-              <input className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="aditi@pes.edu" />
+              <input className="input" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="hemaksh@pes.edu" />
             </div>
 
             <div>

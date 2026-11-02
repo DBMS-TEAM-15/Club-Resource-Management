@@ -1,8 +1,39 @@
 // ============================================================
-// MongoDB Seed Data for resource_specs and maintenance_logs
+// MongoDB Seed Data for resource_specs, maintenance_logs, and user_credentials
 // ============================================================
 
 const database = db.getSiblingDB("campus_club_resource_exchange");
+
+database.user_credentials.drop();
+database.user_credentials.insertMany([
+  {
+    user_id: Int32(1),
+    name: "Aaryesh",
+    email: "aaryesh@pes.edu",
+    role: "student",
+    roll_no: "PES2UG24CS191",
+    password_hash: "scrypt:campus_club_salt_v1:a8f5f167f44f4964e6c998dee827110c",
+    created_at: new Date()
+  },
+  {
+    user_id: Int32(2),
+    name: "Hemaksh",
+    email: "hemaksh@pes.edu",
+    role: "club_officer",
+    club_role: "President - Robotics Club",
+    password_hash: "scrypt:campus_club_salt_v1:d41d8cd98f00b204e9800998ecf8427e",
+    created_at: new Date()
+  },
+  {
+    user_id: Int32(4),
+    name: "Satish",
+    email: "satish@pes.edu",
+    role: "admin",
+    admin_level: "Super Admin",
+    password_hash: "scrypt:campus_club_salt_v1:e99a18c428cb38d5f260853678922e03",
+    created_at: new Date()
+  }
+]);
 
 database.resource_specs.insertMany([
   {
